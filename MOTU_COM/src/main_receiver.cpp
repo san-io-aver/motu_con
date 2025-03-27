@@ -25,6 +25,29 @@ FirebaseConfig config;
 FirebaseData streamData;
 String uid;
 
+void initOLED() {
+    Wire.begin(I2C_SDA, I2C_SCL);
+    if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
+        Serial.println("SSD1306 allocation failed");
+        for (;;);
+    }
+    display.clearDisplay();
+    display.setTextSize(2);
+    display.setTextColor(WHITE);
+    display.setCursor(0, 0);
+    display.println("ESP32C3-OLED Ready!");
+    display.display();
+}
+// Display Message on OLED
+void displayMessage(String message) {
+    display.clearDisplay();
+    display.setCursor(0, 0);
+    display.println("Motu:");
+    display.println(message);
+    display.display();
+}
+
+
 // WiFi Initialization
 void initWiFi() {
     WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
@@ -34,6 +57,7 @@ void initWiFi() {
         delay(1000);
     }
     Serial.println("\nWiFi connected! IP: " + WiFi.localIP().toString());
+    displayMessage("Connected");
 }
 
 // Firebase Initialization
@@ -60,28 +84,7 @@ void initFirebase() {
 }
 
 // OLED Initialization
-void initOLED() {
-    Wire.begin(I2C_SDA, I2C_SCL);
-    if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
-        Serial.println("SSD1306 allocation failed");
-        for (;;);
-    }
-    display.clearDisplay();
-    display.setTextSize(1);
-    display.setTextColor(WHITE);
-    display.setCursor(0, 0);
-    display.println("ESP32C3-OLED Ready!");
-    display.display();
-}
 
-// Display Message on OLED
-void displayMessage(String message) {
-    display.clearDisplay();
-    display.setCursor(0, 0);
-    display.println("New Message:");
-    display.println(message);
-    display.display();
-}
 
 // 📡 Stream Callback Function (Receives Messages from ESP32-A)
 void streamCallback(FirebaseStream data) {
@@ -102,9 +105,10 @@ void streamTimeoutCallback(bool timeout) {
 
 void setup() {
     Serial.begin(115200);
+    initOLED();
     initWiFi();
     initFirebase();
-    initOLED();
+    
 
     // ✅ Start Firebase Streaming (Listening for messages from ESP32-A)
     String path = "/messages/espB";  // Listening for messages meant for ESP32-B
@@ -114,6 +118,6 @@ void setup() {
 
 void loop() {
     // 🔹 Send a message every 10 seconds (for testing)
-    delay(10000);
+    delay(1000);
 }
 #endif
