@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ESP32 Web Messaging</title>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database.js"></script>
+</head>
+<body>
+    <h2>ESP32 Web Messenger</h2>
+    
+    <label for="deviceSelect">Send to:</label>
+    <select id="deviceSelect">
+        <option value="A">ESP32-A</option>
+        <option value="B">ESP32-B</option>
+    </select>
+    
+    <input type="text" id="messageInput" placeholder="Type message...">
+    <button onclick="sendMessage()">Send</button>
+
+    <h3>Received Messages:</h3>
+    <ul id="messagesList"></ul>
+
+    <script src="script.js"></script>
+</body>
+</html>
