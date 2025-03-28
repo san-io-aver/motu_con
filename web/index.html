@@ -2,27 +2,35 @@
 <html>
 <head>
     <title>ESP32 Web Messaging</title>
-     <!-- ✅ Firebase App (Core) -->
+
+    <!-- Firebase App (Core) -->
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
 
-    <!-- ✅ Firebase Realtime Database -->
+    <!-- Firebase Realtime Database -->
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-database-compat.js"></script>
+    <!-- Firebase Authentication -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
+
+    <!-- Link to External CSS File -->
+    <link rel="stylesheet" href="style.css">
 
 </head>
 <body>
-    <h2>ESP32 Web Messenger</h2>
-    
-    <label for="deviceSelect">Send to:</label>
-    <select id="deviceSelect">
-        <option value="A">ESP32-A</option>
-        <option value="B">ESP32-B</option>
-    </select>
-    
-    <input type="text" id="messageInput" placeholder="Type message...">
-    <button onclick="sendMessage()">Send</button>
+    <div class="container">
+        <h2>ESP32 Web Messenger</h2>
 
-    <h3>Received Messages:</h3>
-    <ul id="messagesList"></ul>
+        <label for="deviceSelect">Send to:</label>
+        <select id="deviceSelect">
+            <option value="A">ESP32-A</option>
+            <option value="B">ESP32-B</option>
+        </select>
+
+        <input type="text" id="messageInput" placeholder="Type message...">
+        <button onclick="sendMessage()" id="sendButton">Send</button>
+
+        <h3>Received Messages:</h3>
+        <ul id="messagesList"></ul>
+    </div>
 
     <script src="script.js"></script>
 </body>

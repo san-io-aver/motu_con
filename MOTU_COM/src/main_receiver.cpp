@@ -50,6 +50,8 @@ void displayMessage(String message) {
 
 // WiFi Initialization
 void initWiFi() {
+    WiFi.setAutoReconnect(true);
+    WiFi.persistent(true);
     WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
     Serial.print("Connecting to WiFi...");
     while (WiFi.status() != WL_CONNECTED) {
@@ -70,7 +72,7 @@ void initFirebase() {
     Firebase.reconnectWiFi(true);
     fbdo.setResponseSize(4096);
     config.token_status_callback = tokenStatusCallback;
-    config.max_token_generation_retry = 5;
+    config.max_token_generation_retry = 10;  // Increased retries for token renewal
 
     Firebase.begin(&config, &auth);
 
@@ -99,9 +101,13 @@ void streamCallback(FirebaseStream data) {
 // 📡 Stream Timeout Handler
 void streamTimeoutCallback(bool timeout) {
     if (timeout) {
-        Serial.println(" Firebase Stream Timeout, Reconnecting...");
+        Serial.println(" Firebase Stream Timeout! Restarting Stream...");
+        Firebase.RTDB.endStream(&streamData);
+        Firebase.RTDB.beginStream(&streamData, "/messages/espB/message");
+        Firebase.RTDB.setStreamCallback(&streamData, streamCallback, streamTimeoutCallback);
     }
 }
+
 
 void setup() {
     Serial.begin(115200);
@@ -111,13 +117,45 @@ void setup() {
     
 
     // ✅ Start Firebase Streaming (Listening for messages from ESP32-A)
-    String path = "/messages/espB";  // Listening for messages meant for ESP32-B
+    String path = "/messages/espB/message";  // Listening for messages meant for ESP32-B
     Firebase.RTDB.beginStream(&streamData, path);
     Firebase.RTDB.setStreamCallback(&streamData, streamCallback, streamTimeoutCallback);
 }
 
 void loop() {
-    // 🔹 Send a message every 10 seconds (for testing)
-    delay(1000);
+    // 🔄 Reconnect WiFi if Disconnected
+    if (WiFi.status() != WL_CONNECTED) {
+        Serial.println("⚠️ WiFi Disconnected! Reconnecting...");
+        WiFi.disconnect();
+        WiFi.reconnect();
+        delay(5000);
+        return; // Skip loop iteration if not connected
+    }
+
+    // 🔄 Check Firebase Stream Status
+    if (streamData.streamPath().length() == 0 || !streamData.httpConnected()) {
+        
+        Serial.println(" Firebase Stream Disconnected! Restarting...");
+
+        // End the current stream (if any)
+        Firebase.RTDB.endStream(&streamData);
+
+        // Restart the stream
+        Firebase.RTDB.beginStream(&streamData, "/messages/espB/message");
+        Firebase.RTDB.setStreamCallback(&streamData, streamCallback, streamTimeoutCallback);
+    }
+
+    // 🔄 Handle Firebase Token Expiry (Better Approach)
+    if (!Firebase.ready()) {
+        Serial.println(" Firebase Token Expired! Re-authenticating...");
+        fbdo.clear();
+        streamData.clear();
+        initFirebase(); // Restart Firebase authentication
+    }
+
+    delay(1000); // Avoid unnecessary CPU usage
 }
+
+
+
 #endif
