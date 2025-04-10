@@ -1,13 +1,16 @@
+
+//for esp32 dev boards sda-d21 scl d22
 #include <Arduino.h>
 #include <WiFi.h>
 #include <Firebase_ESP_Client.h>
-#ifdef RECEIVER
 #include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 #include "config.h"
+#include "bitmap.h"
 #include "addons/TokenHelper.h"
 #include "addons/RTDBHelper.h"
+#include <WiFiManager.h>
 
 // Define the device name as ESP32-B
 #define DEVICE_NAME "B"
@@ -15,12 +18,11 @@
 // OLED Display Settings
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 64
-#define I2C_SDA 2
-#define I2C_SCL 3
+
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 
 // Button Pin Definition
-#define BUTTON_PIN 4  // Adjust as per your button pin
+#define BUTTON_PIN 0  // Adjust as per your button pin
 
 // Firebase Objects
 FirebaseData fbdo;
@@ -29,21 +31,15 @@ FirebaseConfig config;
 FirebaseData streamData;
 String uid;
 
-// Image bitmaps (Use your own converted image data here)
-const uint8_t image1[] PROGMEM = {
-  0xFF, 0x81, 0xA5, 0x99, 0x81, 0x81, 0x99, 0xA5, 0x81, 0xFF
-};
-const uint8_t image2[] PROGMEM = {
-  0x81, 0x99, 0xA5, 0xFF, 0xA5, 0x99, 0x81, 0x99, 0xA5, 0xFF
-};
 
 // Slideshow state
-const uint8_t* slideshowImages[] = { image1, image2 };
+const uint8_t* slideshowImages[] = { img1, img2, img3, img4, img5 };
 int currentImageIndex = 0;
 bool displayImages = false;
+String receivedMsg = "";
 
 void initOLED() {
-    Wire.begin(I2C_SDA, I2C_SCL);
+    Wire.begin();
     if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
         Serial.println("SSD1306 allocation failed");
         for (;;);
@@ -60,23 +56,23 @@ void initOLED() {
 void displayMessage(String message) {
     display.clearDisplay();
     display.setCursor(0, 0);
-    display.println("Motu:");
+    display.println("ESP-A:");
     display.println(message);
     display.display();
 }
 
 // WiFi Initialization
 void initWiFi() {
-    WiFi.setAutoReconnect(true);
-    WiFi.persistent(true);
-    WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-    Serial.print("Connecting to WiFi...");
-    while (WiFi.status() != WL_CONNECTED) {
-        Serial.print(".");
-        delay(1000);
+    WiFiManager wm;
+    wm.setConfigPortalTimeout(180); //turns ooff after 3 mins
+    if (!wm.autoConnect("PESP", "password123")) {
+        Serial.println(" Failed to connect or timeout");
+        // Optionally reset or fallback
+        ESP.restart();
     }
-    Serial.println("\nWiFi connected! IP: " + WiFi.localIP().toString());
-    displayMessage("Connected");
+    Serial.println(WiFi.localIP());
+    
+    displayMessage("Wifi Connected");
 }
 
 // Firebase Initialization
@@ -106,7 +102,7 @@ void initFirebase() {
 void streamCallback(FirebaseStream data) {
     Serial.println("\nNew Message Received from ESP32-A!");
     if (data.dataType() == "string") {
-        String receivedMsg = data.stringData();
+        receivedMsg  = data.stringData();
         Serial.println("Received: " + receivedMsg);
         displayMessage(receivedMsg);  // Show message on OLED
     }
@@ -133,14 +129,33 @@ void toggleDisplayMode() {
         lastPressTime = currentTime;
         if (displayImages) {
             Serial.println("Entering Slideshow Mode");
-            display.clearDisplay();
-            display.setCursor(0, 0);
-            display.println("Slideshow Mode");
-            display.display();
-            delay(2000);  // Show mode switch message
-        } else {
+             int frame = 0; int counter = 0;
+            while(true){
+                display.clearDisplay();
+                display.drawBitmap(32, 0, picframes[frame], FRAME_WIDTH, FRAME_HEIGHT, 1);
+                display.display();
+                delay(FRAME_DELAY);
+                frame++; 
+                if(frame==P_FRAME_COUNT){frame=0;counter++;}
+                if(counter==2) break;
+                
+            }
+        } 
+        
+        else {
             Serial.println("Entering Firebase Mode");
-            displayMessage("Connected to Firebase");
+            int frame = 0; int counter = 0;
+            while(true){
+                display.clearDisplay();
+                display.drawBitmap(32, 0, txframes[frame], FRAME_WIDTH, FRAME_HEIGHT, 1);
+                display.display();
+                delay(FRAME_DELAY);
+                frame++; 
+                if(frame==T_FRAME_COUNT){frame=0;counter++;}
+                if(counter==2) break;
+                
+            }
+            displayMessage(receivedMsg);
         }
     }
 }
@@ -157,10 +172,22 @@ void nextImage() {
     currentImageIndex = (currentImageIndex + 1) % (sizeof(slideshowImages) / sizeof(slideshowImages[0]));
     displaySlideshowImage();
 }
-
+void on(){
+    int frame = 0; int counter = 0;
+    while(true){
+        display.clearDisplay();
+        display.drawBitmap(32, 0, onframes[frame], FRAME_WIDTH, FRAME_HEIGHT, 1);
+        display.display();
+        delay(FRAME_DELAY);
+        frame++; 
+        if(frame==O_FRAME_COUNT){frame=0;counter++;}
+        if(counter==3) break;
+    }
+}
 void setup() {
-    Serial.begin(115200);
+    Serial.begin(115200); 
     initOLED();
+    on();
     initWiFi();
     initFirebase();
 
@@ -204,10 +231,17 @@ void loop() {
 
     // Display images in slideshow mode
     if (displayImages) {
-        nextImage();
-        delay(2000);  // Show each image for 2 seconds
+        
+        static unsigned long lastPressTime = 0;
+        unsigned long currentTime = millis();
+        if(currentTime - lastPressTime > 2000){nextImage();lastPressTime=millis();}
     }
 
-    delay(1000); // Avoid unnecessary CPU usage
+    static unsigned long cpuRelaxTime = 0;
+    if (millis() - cpuRelaxTime >= 1000) {
+        cpuRelaxTime = millis();
+        // This runs every 1 second
+    }
+
 }
-#endif
+
