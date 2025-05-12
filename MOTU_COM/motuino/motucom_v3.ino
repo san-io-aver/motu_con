@@ -1,6 +1,8 @@
 
 //for esp32 dev boards sda-d21 scl d22
 //esp32c3 sda d4 and sck d5
+
+//for esp32 dev boards sda-d21 scl d22
 #include <Arduino.h>
 #include <WiFi.h>
 #include <Firebase_ESP_Client.h>
@@ -57,7 +59,7 @@ void initOLED() {
 void displayMessage(String message) {
     display.clearDisplay();
     display.setCursor(0, 0);
-    display.println("ESP-A:");
+    display.println(" San:");
     display.println(message);
     display.display();
 }
@@ -73,7 +75,11 @@ void initWiFi() {
     }
     Serial.println(WiFi.localIP());
     
-    displayMessage("Wifi Connected");
+    display.clearDisplay();
+    display.setCursor(0, 0);
+    display.println("Wifi"); 
+    display.println("Connected");
+    display.display();
 }
 
 // Firebase Initialization
@@ -235,7 +241,7 @@ void loop() {
         
         static unsigned long lastPressTime = 0;
         unsigned long currentTime = millis();
-        if(currentTime - lastPressTime > 2000){nextImage();lastPressTime=millis();}
+        if(currentTime - lastPressTime > 6000){nextImage();lastPressTime=millis();}
     }
 
     static unsigned long cpuRelaxTime = 0;
